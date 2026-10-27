@@ -1,12 +1,16 @@
 # Arch Linux packages
 
-This directory contains a split `PKGBUILD` that produces:
+This directory contains independent PKGBUILDs for the kernel and userspace:
 
-- `linux-xe-fan`: a separate kernel containing the repository's patched `xe`
-  driver; it can be installed alongside Arch's regular `linux` package.
-- `linux-xe-fan-headers`: the matching prepared source tree.
-- `intel-arc-pro-fan-control`: CLI utilities, GTK4/libadwaita GUI, polkit
-  rule, configuration files, and systemd units.
+- `kernel/`: builds `linux-xe-fan` and its matching
+  `linux-xe-fan-headers` package.
+- `userspace/`: builds `intel-arc-pro-fan-control` with the CLI utilities,
+  GTK4/libadwaita GUI, polkit rule, configuration files, and systemd units.
+
+The userspace programs are an executable Python GUI and shell utilities rather
+than compiled native code. Its PKGBUILD still has a build phase that compiles
+the GUI for syntax validation and checks all packaged shell scripts before
+installing the runtime entry points.
 
 The kernel package is built from a complete kernel source tree because the
 `xe` tracepoint includes require an in-tree build. It does not replace the
@@ -14,16 +18,27 @@ stock kernel or its modules.
 
 ## Build
 
-Run from this directory:
+Build the kernel package:
 
 ```bash
+cd kernel
 makepkg -si
 ```
 
-`pkgver` and `_kernelver` in `PKGBUILD` must be updated together when tracking
-a newer Arch kernel. The Arch kernel configuration is downloaded from the
-current `linux` packaging repository; the fan patch may need adjustment when
-the kernel's `xe` sources change.
+Debug-symbol package generation is disabled for the kernel because it copies
+the entire prepared kernel source tree and is not needed for normal use.
+
+Build the userspace package separately:
+
+```bash
+cd userspace
+makepkg -si
+```
+
+`pkgver` and `pkgrel` in `PKGBUILD` should match the corresponding Arch
+`linux` package when tracking a newer kernel. The recipe downloads the
+upstream kernel tarball and Arch's release patch/configuration; the fan patch
+may need adjustment when the kernel's `xe` sources change.
 
 After installation, select `linux-xe-fan` in the bootloader. Verify that the
 GPU binds to `xe` and that the patched sysfs files exist before enabling
