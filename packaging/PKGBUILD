@@ -3,12 +3,12 @@
 # Build from this directory:
 #   makepkg -si
 #
-# The kernel version and Arch config are intentionally pinned here. Update
-# _kernelver/_archver together when refreshing from Arch's linux package.
+# The kernel version follows Arch's linux package. Update pkgver and pkgrel
+# from the matching Arch PKGBUILD when refreshing the kernel.
 
 pkgbase=intel-arc-pro-fan-control
 pkgname=("$pkgbase" "linux-xe-fan" "linux-xe-fan-headers")
-pkgver=6.17.0
+pkgver=7.2.11.arch1
 pkgrel=1
 pkgdesc='Intel Arc Pro fan control, GPU tuning, and patched xe kernel'
 arch=('x86_64')
@@ -19,29 +19,32 @@ makedepends=(
   'openssl' 'pahole' 'patch' 'python' 'rsync' 'tar' 'xz' 'zstd'
 )
 
-_kernelver="$pkgver"
-_archver='1'
-_localversion='-xe-fan'
-_kernelsrc="linux-${_kernelver}"
-_krel="${_kernelver}${_localversion}"
+_srcname="linux-${pkgver%.*}"
+_srctag="v${pkgver%.*}-${pkgver##*.}"
 
 source=(
-  "https://cdn.kernel.org/pub/linux/kernel/v6.x/${_kernelsrc}.tar.xz"
+  "https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.xz"
+  "https://github.com/archlinux/linux/releases/download/${_srctag}/linux-${_srctag}.patch.zst"
   "https://gitlab.archlinux.org/archlinux/packaging/packages/linux/-/raw/main/config.x86_64"
   "../patch/xe-fan-control-168027-cachyos-7.1.2.patch"
   "../kernel/xe_gt_oc.c"
   "../kernel/xe_gt_oc.h"
   "linux-xe-fan.install"
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 install='linux-xe-fan.install'
 
 prepare() {
-  cd "$srcdir/$_kernelsrc"
+  cd "$srcdir/$_srcname"
+
+  echo "-$pkgrel" > localversion.10-pkgrel
+  echo "-xe-fan" > localversion.20-pkgname
+
+  if [[ -f "$srcdir/linux-${_srctag}.patch.zst" ]]; then
+    unzstd -c "$srcdir/linux-${_srctag}.patch.zst" | patch -Np1
+  fi
 
   cp "$srcdir/config.x86_64" .config
-  scripts/config --set-str SYSTEM_TRUSTED_KEYS ''
-  scripts/config --set-str SYSTEM_REVOCATION_KEYS ''
   make olddefconfig
 
   patch -p1 --fuzz=5 -i "$srcdir/xe-fan-control-168027-cachyos-7.1.2.patch"
@@ -90,23 +93,27 @@ PY
 }
 
 build() {
-  cd "$srcdir/$_kernelsrc"
-  make LOCALVERSION="$_localversion" olddefconfig
-  make LOCALVERSION="$_localversion" -j"$(nproc)" bzImage modules
+  cd "$srcdir/$_srcname"
+  make olddefconfig
+  make -s kernelrelease > version
+  make -j"$(nproc)" bzImage modules
 }
 
 _install_kernel() {
   local dest="$1"
-  cd "$srcdir/$_kernelsrc"
+  cd "$srcdir/$_srcname"
+  local krel
+  krel="$(<version)"
 
   install -Dm644 "arch/x86/boot/bzImage" \
-    "$dest/boot/vmlinuz-$_krel"
-  install -Dm644 System.map "$dest/boot/System.map-$_krel"
-  install -Dm644 .config "$dest/boot/config-$_krel"
+    "$dest/usr/lib/modules/$krel/vmlinuz"
+  install -Dm644 System.map "$dest/usr/lib/modules/$krel/System.map"
+  install -Dm644 .config "$dest/usr/lib/modules/$krel/config"
+  echo "$pkgbase" > "$dest/usr/lib/modules/$krel/pkgbase"
 
-  make LOCALVERSION="$_localversion" INSTALL_MOD_PATH="$dest" \
-    modules_install
-  rm -f "$dest/lib/modules/$_krel"/{build,source}
+  ZSTD_CLEVEL=19 make INSTALL_MOD_PATH="$dest/usr" \
+    INSTALL_MOD_STRIP=1 DEPMOD=/doesnt/exist modules_install
+  rm -f "$dest/usr/lib/modules/$krel/build"
 }
 
 package_intel-arc-pro-fan-control() {
@@ -166,12 +173,14 @@ package_linux-xe-fan() {
 
   _install_kernel "$pkgdir"
 
+  local krel
+  krel="$(<"$srcdir/$_srcname/version")"
   install -Dm644 "$startdir/../LICENSE" \
     "$pkgdir/usr/share/licenses/linux-xe-fan/LICENSE"
   install -Dm644 /dev/null "$pkgdir/etc/mkinitcpio.d/linux-xe-fan.preset"
   cat > "$pkgdir/etc/mkinitcpio.d/linux-xe-fan.preset" <<EOF
 ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="$_krel"
+ALL_kver="$krel"
 PRESETS=('default' 'fallback')
 default_image="/boot/initramfs-linux-xe-fan.img"
 fallback_options="-S autodetect"
@@ -183,12 +192,15 @@ package_linux-xe-fan-headers() {
   pkgdesc='Headers and prepared source for the linux-xe-fan kernel'
   depends=('linux-xe-fan')
 
-  local builddir="$pkgdir/usr/lib/modules/$_krel/build"
-  install -d "$pkgdir/usr/src/linux-xe-fan-$_krel"
+  cd "$srcdir/$_srcname"
+  local krel
+  krel="$(<version)"
+  local builddir="$pkgdir/usr/lib/modules/$krel/build"
+  install -d "$pkgdir/usr/src/linux-xe-fan-$krel"
   rsync -a --delete \
     --exclude='.git' \
-    "$srcdir/$_kernelsrc/" "$pkgdir/usr/src/linux-xe-fan-$_krel/"
-  ln -s "/usr/src/linux-xe-fan-$_krel" "$builddir"
-  ln -s "/usr/src/linux-xe-fan-$_krel" \
-    "$pkgdir/usr/lib/modules/$_krel/source"
+    "$srcdir/$_srcname/" "$pkgdir/usr/src/linux-xe-fan-$krel/"
+  ln -s "/usr/src/linux-xe-fan-$krel" "$builddir"
+  ln -s "/usr/src/linux-xe-fan-$krel" \
+    "$pkgdir/usr/lib/modules/$krel/source"
 }
