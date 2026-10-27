@@ -5,7 +5,7 @@
 
 pkgname=intel-arc-pro-fan-control
 pkgver=1
-pkgrel=1
+pkgrel=2
 pkgdesc='Userland utilities and GTK4 GUI for Intel Arc Pro fan control'
 arch=('x86_64')
 url='https://github.com/Mukunya/intel-arc-pro-fan-control'
@@ -52,7 +52,7 @@ package() {
   install -Dm755 "$root/gui/xe-gpu-gui.py" \
     "$pkgdir/usr/bin/xe-gpu-gui"
   install -Dm755 "$root/scripts/xe-b70-rebar-kexec.sh" \
-    "$pkgdir/usr/sbin/xe-b70-rebar-kexec"
+    "$pkgdir/usr/bin/xe-b70-rebar-kexec"
 
   install -Dm644 "$root/gui/xe-gpu-gui.desktop" \
     "$pkgdir/usr/share/applications/xe-gpu-gui.desktop"
@@ -66,6 +66,8 @@ package() {
     install -Dm644 "$file" \
       "$pkgdir/usr/lib/systemd/system/$(basename "$file")"
   done
+  sed -i 's#/usr/local/sbin/xe-b70-rebar-kexec\.sh#/usr/bin/xe-b70-rebar-kexec#' \
+    "$pkgdir/usr/lib/systemd/system/xe-b70-rebar.service"
   sed -i 's#/usr/local/bin#/usr/bin#g; s#/usr/local/sbin#/usr/sbin#g' \
     "$pkgdir"/usr/lib/systemd/system/*.service
   for file in "$root"/systemd/etc/*.conf; do
