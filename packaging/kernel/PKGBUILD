@@ -34,7 +34,7 @@ source=(
   "xe_gt_oc.h::file://${startdir}/../../kernel/xe_gt_oc.h"
   "linux-xe-fan.install"
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 install='linux-xe-fan.install'
 
 prepare() {
