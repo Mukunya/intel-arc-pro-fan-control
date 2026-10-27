@@ -112,7 +112,7 @@ _install_kernel() {
   install -Dm644 .config "$dest/usr/lib/modules/$krel/config"
   echo "$pkgbase" > "$dest/usr/lib/modules/$krel/pkgbase"
 
-  ZSTD_CLEVEL=19 make INSTALL_MOD_PATH="$dest/usr" \
+  ZSTD_CLEVEL=19 make -j"$(nproc)" INSTALL_MOD_PATH="$dest/usr" \
     DEPMOD=/bin/true modules_install
   rm -f "$dest/usr/lib/modules/$krel/build"
 }
