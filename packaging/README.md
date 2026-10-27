@@ -7,6 +7,11 @@ This directory contains independent PKGBUILDs for the kernel and userspace:
 - `userspace/`: builds `intel-arc-pro-fan-control` with the CLI utilities,
   GTK4/libadwaita GUI, polkit rule, configuration files, and systemd units.
 
+The userspace programs are an executable Python GUI and shell utilities rather
+than compiled native code. Its PKGBUILD still has a build phase that compiles
+the GUI for syntax validation and checks all packaged shell scripts before
+installing the runtime entry points.
+
 The kernel package is built from a complete kernel source tree because the
 `xe` tracepoint includes require an in-tree build. It does not replace the
 stock kernel or its modules.

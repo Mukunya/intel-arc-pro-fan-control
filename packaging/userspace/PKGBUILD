@@ -24,6 +24,19 @@ backup=(
   'etc/xe-gpu-tune.conf'
 )
 
+build() {
+  local root="$startdir/../.."
+  local pycache="$srcdir/pycache"
+
+  PYTHONPYCACHEPREFIX="$pycache" python -m py_compile \
+    "$root/gui/xe-gpu-gui.py"
+  for name in xe-fan-curve xe-gpu-tune xe-gpu-temps xe-gpu xe-gpu-oc \
+              xe-gpu-stress xe-gpu-vramd setup-llm-benchmark \
+              xe-b70-rebar-kexec; do
+    bash -n "$root/scripts/$name.sh"
+  done
+}
+
 package() {
   local root="$startdir/../.."
 
