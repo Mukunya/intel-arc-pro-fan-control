@@ -26,9 +26,9 @@ source=(
   "https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.xz"
   "https://github.com/archlinux/linux/releases/download/${_srctag}/linux-${_srctag}.patch.zst"
   "https://gitlab.archlinux.org/archlinux/packaging/packages/linux/-/raw/main/config.x86_64"
-  "../patch/xe-fan-control-168027-cachyos-7.1.2.patch"
-  "../kernel/xe_gt_oc.c"
-  "../kernel/xe_gt_oc.h"
+  "xe-fan-control-168027-cachyos-7.1.2.patch::file://${startdir}/../patch/xe-fan-control-168027-cachyos-7.1.2.patch"
+  "xe_gt_oc.c::file://${startdir}/../kernel/xe_gt_oc.c"
+  "xe_gt_oc.h::file://${startdir}/../kernel/xe_gt_oc.h"
   "linux-xe-fan.install"
 )
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
