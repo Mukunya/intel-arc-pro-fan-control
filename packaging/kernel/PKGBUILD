@@ -9,7 +9,7 @@
 pkgbase=linux-xe-fan
 pkgname=('linux-xe-fan' 'linux-xe-fan-headers')
 pkgver=7.2.11.arch1
-pkgrel=1
+pkgrel=2
 pkgdesc='Arch kernel with the Intel Arc Pro fan and VF-curve xe patches'
 arch=('x86_64')
 url='https://github.com/Mukunya/intel-arc-pro-fan-control'
