@@ -27,7 +27,7 @@ backup=(
 package() {
   local root="$startdir/../.."
 
-  install -d "$pkgdir/usr/bin" "$pkgdir/usr/sbin"
+  install -d "$pkgdir/usr/bin"
   for name in xe-fan-curve xe-gpu-tune xe-gpu-temps xe-gpu xe-gpu-oc \
               xe-gpu-stress xe-gpu-vramd; do
     install -Dm755 "$root/scripts/$name.sh" "$pkgdir/usr/bin/$name"
