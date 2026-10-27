@@ -1,0 +1,61 @@
+# Maintainer: Mukunya
+#
+# Build from this directory:
+#   makepkg -si
+
+pkgname=intel-arc-pro-fan-control
+pkgver=1
+pkgrel=1
+pkgdesc='Userland utilities and GTK4 GUI for Intel Arc Pro fan control'
+arch=('x86_64')
+url='https://github.com/Mukunya/intel-arc-pro-fan-control'
+license=('MIT')
+depends=(
+  'gtk4' 'libadwaita' 'polkit' 'python' 'python-gobject' 'python-cairo'
+  'systemd'
+)
+optdepends=(
+  'desktop-file-utils: update the desktop application cache'
+  'kexec-tools: B70 resizable-BAR workaround'
+)
+backup=(
+  'etc/xe-fan-curve.conf'
+  'etc/xe-gpu-oc.conf'
+  'etc/xe-gpu-tune.conf'
+)
+
+package() {
+  local root="$startdir/../.."
+
+  install -d "$pkgdir/usr/bin" "$pkgdir/usr/sbin"
+  for name in xe-fan-curve xe-gpu-tune xe-gpu-temps xe-gpu xe-gpu-oc \
+              xe-gpu-stress xe-gpu-vramd; do
+    install -Dm755 "$root/scripts/$name.sh" "$pkgdir/usr/bin/$name"
+  done
+  if [[ -f "$root/scripts/setup-llm-benchmark.sh" ]]; then
+    install -Dm755 "$root/scripts/setup-llm-benchmark.sh" \
+      "$pkgdir/usr/bin/xe-gpu-benchmark-setup"
+  fi
+  install -Dm755 "$root/gui/xe-gpu-gui.py" \
+    "$pkgdir/usr/bin/xe-gpu-gui"
+  install -Dm755 "$root/scripts/xe-b70-rebar-kexec.sh" \
+    "$pkgdir/usr/sbin/xe-b70-rebar-kexec"
+
+  install -Dm644 "$root/gui/xe-gpu-gui.desktop" \
+    "$pkgdir/usr/share/applications/xe-gpu-gui.desktop"
+  install -Dm644 "$root/polkit/49-xe-gpu.rules" \
+    "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
+  sed -i 's#/usr/local/bin#/usr/bin#g; s#/usr/local/sbin#/usr/sbin#g' \
+    "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
+  sed -i '/xe-fan-rebuild/d' "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
+
+  for file in "$root"/systemd/*.service; do
+    install -Dm644 "$file" \
+      "$pkgdir/usr/lib/systemd/system/$(basename "$file")"
+  done
+  sed -i 's#/usr/local/bin#/usr/bin#g; s#/usr/local/sbin#/usr/sbin#g' \
+    "$pkgdir"/usr/lib/systemd/system/*.service
+  for file in "$root"/systemd/etc/*.conf; do
+    install -Dm644 "$file" "$pkgdir/etc/$(basename "$file")"
+  done
+}

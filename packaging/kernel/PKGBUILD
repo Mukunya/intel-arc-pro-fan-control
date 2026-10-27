@@ -6,15 +6,17 @@
 # The kernel version follows Arch's linux package. Update pkgver and pkgrel
 # from the matching Arch PKGBUILD when refreshing the kernel.
 
-pkgbase=intel-arc-pro-fan-control
-pkgname=("$pkgbase" "linux-xe-fan" "linux-xe-fan-headers")
+pkgbase=linux-xe-fan
+pkgname=('linux-xe-fan' 'linux-xe-fan-headers')
 pkgver=7.2.11.arch1
 pkgrel=1
-pkgdesc='Intel Arc Pro fan control, GPU tuning, and patched xe kernel'
+pkgdesc='Arch kernel with the Intel Arc Pro fan and VF-curve xe patches'
 arch=('x86_64')
 url='https://github.com/Mukunya/intel-arc-pro-fan-control'
 license=('MIT')
-options=('!strip')
+# Kernel debug packages copy the entire prepared source tree and add a large
+# amount of packaging time without being useful for the normal kernel package.
+options=('!strip' '!debug')
 makedepends=(
   'bc' 'bison' 'cpio' 'elfutils' 'flex' 'git' 'kmod' 'libelf'
   'openssl' 'pahole' 'patch' 'python' 'rsync' 'tar' 'xz' 'zstd'
@@ -27,12 +29,12 @@ source=(
   "https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.xz"
   "https://github.com/archlinux/linux/releases/download/${_srctag}/linux-${_srctag}.patch.zst"
   "https://gitlab.archlinux.org/archlinux/packaging/packages/linux/-/raw/main/config.x86_64"
-  "xe-fan-control-168027-cachyos-7.1.2.patch::file://${startdir}/../patch/xe-fan-control-168027-cachyos-7.1.2.patch"
-  "xe_gt_oc.c::file://${startdir}/../kernel/xe_gt_oc.c"
-  "xe_gt_oc.h::file://${startdir}/../kernel/xe_gt_oc.h"
+  "xe-fan-control-168027-cachyos-7.1.2.patch::file://${startdir}/../../patch/xe-fan-control-168027-cachyos-7.1.2.patch"
+  "xe_gt_oc.c::file://${startdir}/../../kernel/xe_gt_oc.c"
+  "xe_gt_oc.h::file://${startdir}/../../kernel/xe_gt_oc.h"
   "linux-xe-fan.install"
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 install='linux-xe-fan.install'
 
 prepare() {
@@ -117,57 +119,7 @@ _install_kernel() {
   rm -f "$dest/usr/lib/modules/$krel/build"
 }
 
-package_intel-arc-pro-fan-control() {
-  pkgdesc='Userland utilities and GTK4 GUI for Intel Arc Pro fan control'
-  depends=(
-    'gtk4' 'libadwaita' 'polkit' 'python' 'python-gobject' 'python-cairo'
-    'systemd'
-  )
-  optdepends=(
-    'desktop-file-utils: update the desktop application cache'
-    'kexec-tools: B70 resizable-BAR workaround'
-  )
-  backup=(
-    'etc/xe-fan-curve.conf'
-    'etc/xe-gpu-oc.conf'
-    'etc/xe-gpu-tune.conf'
-  )
-
-  install -d "$pkgdir/usr/bin" "$pkgdir/usr/sbin"
-  for name in xe-fan-curve xe-gpu-tune xe-gpu-temps xe-gpu xe-gpu-oc \
-              xe-gpu-stress xe-gpu-vramd; do
-    install -Dm755 "$startdir/../scripts/$name.sh" "$pkgdir/usr/bin/$name"
-  done
-  if [[ -f "$startdir/../scripts/setup-llm-benchmark.sh" ]]; then
-    install -Dm755 "$startdir/../scripts/setup-llm-benchmark.sh" \
-      "$pkgdir/usr/bin/xe-gpu-benchmark-setup"
-  fi
-  install -Dm755 "$startdir/../gui/xe-gpu-gui.py" \
-    "$pkgdir/usr/bin/xe-gpu-gui"
-  install -Dm755 "$startdir/../scripts/xe-b70-rebar-kexec.sh" \
-    "$pkgdir/usr/sbin/xe-b70-rebar-kexec"
-
-  install -Dm644 "$startdir/../gui/xe-gpu-gui.desktop" \
-    "$pkgdir/usr/share/applications/xe-gpu-gui.desktop"
-  install -Dm644 "$startdir/../polkit/49-xe-gpu.rules" \
-    "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
-  sed -i 's#/usr/local/bin#/usr/bin#g; s#/usr/local/sbin#/usr/sbin#g' \
-    "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
-  sed -i '/xe-fan-rebuild/d' "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
-
-  for file in "$startdir"/../systemd/*.service; do
-    install -Dm644 "$file" \
-      "$pkgdir/usr/lib/systemd/system/$(basename "$file")"
-  done
-  sed -i 's#/usr/local/bin#/usr/bin#g; s#/usr/local/sbin#/usr/sbin#g' \
-    "$pkgdir"/usr/lib/systemd/system/*.service
-  for file in "$startdir"/../systemd/etc/*.conf; do
-    install -Dm644 "$file" "$pkgdir/etc/$(basename "$file")"
-  done
-}
-
 package_linux-xe-fan() {
-  pkgdesc='Arch kernel with the Intel Arc Pro fan and VF-curve xe patches'
   depends=('coreutils' 'kmod' 'mkinitcpio')
   optdepends=('linux-xe-fan-headers: build external modules for this kernel')
   install='linux-xe-fan.install'
@@ -176,7 +128,7 @@ package_linux-xe-fan() {
 
   local krel
   krel="$(<"$srcdir/$_srcname/version")"
-  install -Dm644 "$startdir/../LICENSE" \
+  install -Dm644 "$startdir/../../LICENSE" \
     "$pkgdir/usr/share/licenses/linux-xe-fan/LICENSE"
   install -Dm644 /dev/null "$pkgdir/etc/mkinitcpio.d/linux-xe-fan.preset"
   cat > "$pkgdir/etc/mkinitcpio.d/linux-xe-fan.preset" <<EOF
