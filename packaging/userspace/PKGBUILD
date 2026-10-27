@@ -5,7 +5,7 @@
 
 pkgname=intel-arc-pro-fan-control
 pkgver=1
-pkgrel=2
+pkgrel=3
 pkgdesc='Userland utilities and GTK4 GUI for Intel Arc Pro fan control'
 arch=('x86_64')
 url='https://github.com/Mukunya/intel-arc-pro-fan-control'
@@ -40,25 +40,23 @@ build() {
 package() {
   local root="$startdir/../.."
 
-  install -d "$pkgdir/usr/bin"
+  install -d "$pkgdir/usr/local/bin"
   for name in xe-fan-curve xe-gpu-tune xe-gpu-temps xe-gpu xe-gpu-oc \
               xe-gpu-stress xe-gpu-vramd; do
-    install -Dm755 "$root/scripts/$name.sh" "$pkgdir/usr/bin/$name"
+    install -Dm755 "$root/scripts/$name.sh" "$pkgdir/usr/local/bin/$name"
   done
   if [[ -f "$root/scripts/setup-llm-benchmark.sh" ]]; then
     install -Dm755 "$root/scripts/setup-llm-benchmark.sh" \
-      "$pkgdir/usr/bin/xe-gpu-benchmark-setup"
+      "$pkgdir/usr/local/bin/xe-gpu-benchmark-setup"
   fi
   install -Dm755 "$root/gui/xe-gpu-gui.py" \
-    "$pkgdir/usr/bin/xe-gpu-gui"
+    "$pkgdir/usr/local/bin/xe-gpu-gui"
   install -Dm755 "$root/scripts/xe-b70-rebar-kexec.sh" \
-    "$pkgdir/usr/bin/xe-b70-rebar-kexec"
+    "$pkgdir/usr/local/bin/xe-b70-rebar-kexec"
 
   install -Dm644 "$root/gui/xe-gpu-gui.desktop" \
     "$pkgdir/usr/share/applications/xe-gpu-gui.desktop"
   install -Dm644 "$root/polkit/49-xe-gpu.rules" \
-    "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
-  sed -i 's#/usr/local/bin#/usr/bin#g; s#/usr/local/sbin#/usr/sbin#g' \
     "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
   sed -i '/xe-fan-rebuild/d' "$pkgdir/etc/polkit-1/rules.d/49-xe-gpu.rules"
 
@@ -66,10 +64,8 @@ package() {
     install -Dm644 "$file" \
       "$pkgdir/usr/lib/systemd/system/$(basename "$file")"
   done
-  sed -i 's#/usr/local/sbin/xe-b70-rebar-kexec\.sh#/usr/bin/xe-b70-rebar-kexec#' \
+  sed -i 's#/usr/local/sbin/xe-b70-rebar-kexec\.sh#/usr/local/bin/xe-b70-rebar-kexec#' \
     "$pkgdir/usr/lib/systemd/system/xe-b70-rebar.service"
-  sed -i 's#/usr/local/bin#/usr/bin#g; s#/usr/local/sbin#/usr/sbin#g' \
-    "$pkgdir"/usr/lib/systemd/system/*.service
   for file in "$root"/systemd/etc/*.conf; do
     install -Dm644 "$file" "$pkgdir/etc/$(basename "$file")"
   done
