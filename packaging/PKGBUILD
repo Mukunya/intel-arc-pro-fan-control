@@ -112,7 +112,7 @@ _install_kernel() {
   echo "$pkgbase" > "$dest/usr/lib/modules/$krel/pkgbase"
 
   ZSTD_CLEVEL=19 make INSTALL_MOD_PATH="$dest/usr" \
-    INSTALL_MOD_STRIP=1 DEPMOD=/doesnt/exist modules_install
+    INSTALL_MOD_STRIP=1 DEPMOD=/bin/true modules_install
   rm -f "$dest/usr/lib/modules/$krel/build"
 }
 
@@ -196,7 +196,7 @@ package_linux-xe-fan-headers() {
   local krel
   krel="$(<version)"
   local builddir="$pkgdir/usr/lib/modules/$krel/build"
-  install -d "$pkgdir/usr/src/linux-xe-fan-$krel"
+  install -d "$builddir" "$pkgdir/usr/src/linux-xe-fan-$krel"
   rsync -a --delete \
     --exclude='.git' \
     "$srcdir/$_srcname/" "$pkgdir/usr/src/linux-xe-fan-$krel/"
