@@ -14,6 +14,7 @@ pkgdesc='Intel Arc Pro fan control, GPU tuning, and patched xe kernel'
 arch=('x86_64')
 url='https://github.com/Mukunya/intel-arc-pro-fan-control'
 license=('MIT')
+options=('!strip')
 makedepends=(
   'bc' 'bison' 'cpio' 'elfutils' 'flex' 'git' 'kmod' 'libelf'
   'openssl' 'pahole' 'patch' 'python' 'rsync' 'tar' 'xz' 'zstd'
@@ -112,7 +113,7 @@ _install_kernel() {
   echo "$pkgbase" > "$dest/usr/lib/modules/$krel/pkgbase"
 
   ZSTD_CLEVEL=19 make INSTALL_MOD_PATH="$dest/usr" \
-    INSTALL_MOD_STRIP=1 DEPMOD=/bin/true modules_install
+    DEPMOD=/bin/true modules_install
   rm -f "$dest/usr/lib/modules/$krel/build"
 }
 
