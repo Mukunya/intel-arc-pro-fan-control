@@ -23,7 +23,8 @@ for cand in \
   "/lib/modules/${KVER}/build" \
   "/usr/lib/modules/${KVER}/build" \
   "/usr/src/linux-headers-${KVER}" \
-  "/usr/src/kernels/${KVER}"
+  "/usr/src/kernels/${KVER}" \
+  "/usr/src/linux"
 do
   [ -d "$cand" ] || continue
   HDR="$(readlink -f "$cand")"
