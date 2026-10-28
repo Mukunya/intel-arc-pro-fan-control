@@ -2,158 +2,42 @@
 #
 # Build from this directory:
 #   makepkg -si
-#
-# The kernel version follows Arch's linux package. Update pkgver and pkgrel
-# from the matching Arch PKGBUILD when refreshing the kernel.
 
-pkgbase=linux-xe-fan
-pkgname=('linux-xe-fan' 'linux-xe-fan-headers')
-pkgver=7.2.11.arch1
-pkgrel=2
-pkgdesc='Arch kernel with the Intel Arc Pro fan and VF-curve xe patches'
+pkgname=intel-xe-oc-dkms
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='DKMS package for patched Intel xe fan control and VF-curve overclocking'
 arch=('x86_64')
 url='https://github.com/Mukunya/intel-arc-pro-fan-control'
 license=('MIT')
-# Kernel debug packages copy the entire prepared source tree and add a large
-# amount of packaging time without being useful for the normal kernel package.
-options=('!strip' '!debug')
-makedepends=(
-  'bc' 'bison' 'cpio' 'elfutils' 'flex' 'git' 'kmod' 'libelf'
-  'openssl' 'pahole' 'patch' 'python' 'rsync' 'tar' 'xz' 'zstd'
-)
-
-_srcname="linux-${pkgver%.*}"
-_srctag="v${pkgver%.*}-${pkgver##*.}"
-
+depends=('dkms' 'bash')
+makedepends=('patch' 'python')
 source=(
-  "https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.xz"
-  "https://github.com/archlinux/linux/releases/download/${_srctag}/linux-${_srctag}.patch.zst"
-  "https://gitlab.archlinux.org/archlinux/packaging/packages/linux/-/raw/main/config.x86_64"
+  "dkms.conf::file://${startdir}/../../dkms/dkms.conf"
+  "dkms-build.sh::file://${startdir}/../../dkms/dkms-build.sh"
   "xe-fan-control-168027-cachyos-7.1.2.patch::file://${startdir}/../../patch/xe-fan-control-168027-cachyos-7.1.2.patch"
   "xe_gt_oc.c::file://${startdir}/../../kernel/xe_gt_oc.c"
   "xe_gt_oc.h::file://${startdir}/../../kernel/xe_gt_oc.h"
-  "linux-xe-fan.install"
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
-install='linux-xe-fan.install'
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
-prepare() {
-  cd "$srcdir/$_srcname"
+package() {
+  local modname='intel-xe-oc'
+  local moddir="$pkgdir/usr/src/${modname}-${pkgver}"
 
-  echo "-$pkgrel" > localversion.10-pkgrel
-  echo "-xe-fan" > localversion.20-pkgname
+  install -d "$moddir/patch" "$moddir/kernel"
 
-  if [[ -f "$srcdir/linux-${_srctag}.patch.zst" ]]; then
-    unzstd -c "$srcdir/linux-${_srctag}.patch.zst" | patch -Np1
-  fi
+  install -Dm755 "$srcdir/dkms-build.sh" "$moddir/dkms-build.sh"
+  install -Dm644 "$srcdir/xe-fan-control-168027-cachyos-7.1.2.patch" \
+    "$moddir/patch/xe-fan-control-168027-cachyos-7.1.2.patch"
+  install -Dm644 "$srcdir/xe_gt_oc.c" "$moddir/kernel/xe_gt_oc.c"
+  install -Dm644 "$srcdir/xe_gt_oc.h" "$moddir/kernel/xe_gt_oc.h"
 
-  cp "$srcdir/config.x86_64" .config
-  make olddefconfig
+  sed \
+    -e "s/^PACKAGE_NAME=.*/PACKAGE_NAME=\"${modname}\"/" \
+    -e "s/^PACKAGE_VERSION=.*/PACKAGE_VERSION=\"${pkgver}\"/" \
+    "$srcdir/dkms.conf" > "$moddir/dkms.conf"
 
-  patch -p1 --fuzz=5 -i "$srcdir/xe-fan-control-168027-cachyos-7.1.2.patch"
-
-  local xe='drivers/gpu/drm/xe'
-  cp "$srcdir/xe_gt_oc.c" "$srcdir/xe_gt_oc.h" "$xe/"
-
-  python - "$xe" <<'PY'
-import sys
-from pathlib import Path
-
-xe = Path(sys.argv[1])
-
-makefile = xe / "Makefile"
-text = makefile.read_text()
-if "xe_gt_oc.o" not in text:
-    lines = text.splitlines(keepends=True)
-    for index, line in enumerate(lines):
-        if "xe_gt_freq.o" in line:
-            indent = line[:len(line) - len(line.lstrip())]
-            lines.insert(index + 1, f"{indent}xe_gt_oc.o \\\n")
-            break
-    else:
-        raise SystemExit("xe_gt_freq.o anchor not found in xe Makefile")
-    makefile.write_text("".join(lines))
-
-gt = xe / "xe_gt.c"
-text = gt.read_text()
-if '#include "xe_gt_oc.h"' not in text:
-    anchor = '#include "xe_gt_freq.h"\n'
-    if anchor not in text:
-        raise SystemExit("xe_gt_freq.h include not found")
-    text = text.replace(anchor, anchor + '#include "xe_gt_oc.h"\n', 1)
-
-if "xe_gt_oc_init(gt)" not in text:
-    anchor = "\terr = xe_gt_freq_init(gt);\n\tif (err)\n\t\treturn err;\n"
-    if anchor not in text:
-        raise SystemExit("xe_gt_freq_init anchor not found")
-    text = text.replace(
-        anchor,
-        anchor + "\n\terr = xe_gt_oc_init(gt);\n\tif (err)\n\t\treturn err;\n",
-        1,
-    )
-gt.write_text(text)
-PY
-}
-
-build() {
-  cd "$srcdir/$_srcname"
-  make olddefconfig
-  make -s kernelrelease > version
-  make -j"$(nproc)" bzImage modules
-}
-
-_install_kernel() {
-  local dest="$1"
-  cd "$srcdir/$_srcname"
-  local krel
-  krel="$(<version)"
-
-  install -Dm644 "arch/x86/boot/bzImage" \
-    "$dest/usr/lib/modules/$krel/vmlinuz"
-  install -Dm644 System.map "$dest/usr/lib/modules/$krel/System.map"
-  install -Dm644 .config "$dest/usr/lib/modules/$krel/config"
-  echo "$pkgbase" > "$dest/usr/lib/modules/$krel/pkgbase"
-
-  ZSTD_CLEVEL=19 make -j"$(nproc)" INSTALL_MOD_PATH="$dest/usr" \
-    DEPMOD=/bin/true modules_install
-  rm -f "$dest/usr/lib/modules/$krel/build"
-}
-
-package_linux-xe-fan() {
-  depends=('coreutils' 'kmod' 'mkinitcpio')
-  optdepends=('linux-xe-fan-headers: build external modules for this kernel')
-  install='linux-xe-fan.install'
-
-  _install_kernel "$pkgdir"
-
-  local krel
-  krel="$(<"$srcdir/$_srcname/version")"
   install -Dm644 "$startdir/../../LICENSE" \
-    "$pkgdir/usr/share/licenses/linux-xe-fan/LICENSE"
-  install -Dm644 /dev/null "$pkgdir/etc/mkinitcpio.d/linux-xe-fan.preset"
-  cat > "$pkgdir/etc/mkinitcpio.d/linux-xe-fan.preset" <<EOF
-ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="$krel"
-PRESETS=('default' 'fallback')
-default_image="/boot/initramfs-linux-xe-fan.img"
-fallback_options="-S autodetect"
-fallback_image="/boot/initramfs-linux-xe-fan-fallback.img"
-EOF
-}
-
-package_linux-xe-fan-headers() {
-  pkgdesc='Headers and prepared source for the linux-xe-fan kernel'
-  depends=('linux-xe-fan')
-
-  cd "$srcdir/$_srcname"
-  local krel
-  krel="$(<version)"
-  local builddir="$pkgdir/usr/lib/modules/$krel/build"
-  install -d "$builddir" "$pkgdir/usr/src/linux-xe-fan-$krel"
-  rsync -a --delete \
-    --exclude='.git' \
-    "$srcdir/$_srcname/" "$pkgdir/usr/src/linux-xe-fan-$krel/"
-  ln -s "/usr/src/linux-xe-fan-$krel" "$builddir"
-  ln -s "/usr/src/linux-xe-fan-$krel" \
-    "$pkgdir/usr/lib/modules/$krel/source"
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
