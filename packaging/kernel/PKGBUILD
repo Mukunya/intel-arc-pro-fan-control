@@ -5,7 +5,7 @@
 
 pkgname=intel-xe-oc-dkms
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='DKMS package for patched Intel xe fan control and VF-curve overclocking'
 arch=('x86_64')
 url='https://github.com/Mukunya/intel-arc-pro-fan-control'

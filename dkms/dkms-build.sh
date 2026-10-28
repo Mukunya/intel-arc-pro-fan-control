@@ -13,24 +13,59 @@ set -euo pipefail
 
 KVER="${1:?usage: dkms-build.sh <kernelver>}"
 BASE="${KVER%%-*}"
-HDR="/usr/src/linux-headers-${KVER}"
 HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"   # the DKMS source dir
 OUT="${HERE}/build-${KVER}"
 SRC="${OUT}/linux-source-${BASE}"
 XE="${SRC}/drivers/gpu/drm/xe"
 
-[ -d "$HDR" ] || { echo "dkms-build: headers for $KVER not found ($HDR)"; exit 1; }
+HDR=""
+for cand in \
+  "/lib/modules/${KVER}/build" \
+  "/usr/lib/modules/${KVER}/build" \
+  "/usr/src/linux-headers-${KVER}" \
+  "/usr/src/kernels/${KVER}"
+do
+  [ -d "$cand" ] || continue
+  HDR="$(readlink -f "$cand")"
+  break
+done
+[ -n "$HDR" ] || {
+  echo "dkms-build: headers/build tree for $KVER not found."
+  echo "            checked /lib/modules/<kver>/build and common source locations."
+  exit 1
+}
 
 # --- kernel source -----------------------------------------------------------
-TARBALL="$(ls /usr/src/linux-source-${BASE}/linux-source-${BASE}.tar.* 2>/dev/null | head -1 || true)"
-if [ -z "$TARBALL" ]; then
-  echo "dkms-build: kernel source tarball for $BASE not found."
-  echo "            install it, e.g.:  apt-get install linux-source-${BASE}"
-  exit 1
-fi
 rm -rf "$OUT"; mkdir -p "$OUT"
-tar -xf "$TARBALL" -C "$OUT"
-[ -d "$XE" ] || { echo "dkms-build: xe not in source tree"; exit 1; }
+
+if [ -d "$HDR/drivers/gpu/drm/xe" ] && [ -f "$HDR/Makefile" ]; then
+  cp -a "$HDR" "$SRC"
+else
+  KERNEL_SRC=""
+  for cand in \
+    "/lib/modules/${KVER}/source" \
+    "/usr/lib/modules/${KVER}/source" \
+    "/usr/src/linux" \
+    "/usr/src/kernels/${KVER}"
+  do
+    [ -d "$cand/drivers/gpu/drm/xe" ] || continue
+    KERNEL_SRC="$(readlink -f "$cand")"
+    break
+  done
+
+  if [ -n "$KERNEL_SRC" ]; then
+    cp -a "$KERNEL_SRC" "$SRC"
+  else
+    TARBALL="$(ls /usr/src/linux-source-${BASE}/linux-source-${BASE}.tar.* 2>/dev/null | head -1 || true)"
+    if [ -z "$TARBALL" ]; then
+      echo "dkms-build: no full kernel source tree found for $KVER."
+      echo "            install distro kernel source (Debian: linux-source-${BASE}; Arch: linux source tree under /usr/src/linux)."
+      exit 1
+    fi
+    tar -xf "$TARBALL" -C "$OUT"
+  fi
+fi
+[ -d "$XE" ] || { echo "dkms-build: xe not in source tree ($SRC)"; exit 1; }
 
 # --- patches (shipped alongside this script in the DKMS source dir) ----------
 FANPATCH="$(ls "$HERE"/patch/xe-fan-control-*.patch 2>/dev/null | head -1 || \

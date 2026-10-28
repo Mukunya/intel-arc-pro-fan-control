@@ -59,10 +59,10 @@ stock `kernel/drivers/gpu/drm/xe`.
 
 ## Known limitations
 
-* **Ubuntu/Debian-oriented.** The `linux-source-<base>` assumption is
-  Debian-family; adapt the "kernel source" section of `dkms-build.sh` for Arch
-  (ABS) / Fedora (`kernel-devel` ships enough source for many modules but the xe
-  tracepoints may still need the full tree).
+* **Kernel source availability still required.** The script now checks common
+  Debian/Ubuntu (`/usr/src/linux-source-*`) and Arch (`/usr/src/linux`,
+  `/lib/modules/<kver>/{build,source}`) layouts, but still needs a full kernel
+  source tree that includes `drivers/gpu/drm/xe`.
 * **Big builds.** Each kernel update triggers a full `xe` compile (minutes).
 * **Replaces an in-tree module.** More invasive than a normal add-on; the
   recovery path above matters. A bad build must never leave you unable to boot to
